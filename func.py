@@ -5,15 +5,15 @@ from database import create_tables_if_not_exist, get_user_data, get_user_data_by
 from logger import logger
 import random
 import config
+from datetime import datetime
 
 client = discord.Client(intents=discord.Intents.all(), dm_intents=discord.Intents.all(), log_handler=None)
 
-def random_hex_color():
-    """Возвращает случайный цвет в формате hex"""
-    r = random.randint(0, 255)
-    g = random.randint(0, 255)
-    b = random.randint(0, 255)
-    return "0x{:02x}{:02x}{:02x}".format(r, g, b)
+def generate_random_color():
+    # generate a random hex color code
+    r = lambda: random.randint(0, 255)
+    color = int('0x{:02X}{:02X}{:02X}'.format(r(), r(), r()), 16)
+    return color
 
 async def menu(uid, message):
     if uid not in user_data:
@@ -109,22 +109,22 @@ async def add_coins(uid, message):
             await message.author.send(f"Успешно добавлено {amount} монет статику {static_id}!")
             if isinstance(message.channel, discord.TextChannel):
                 await message.delete()
-            # # Получаем текущую дату и время
-            # current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            #
-            # # Создаем embed сообщение
-            # random_color = random_hex_color()
-            # print(random_color)
-            # embed = discord.Embed(title='current_time', color=random_color)
-            # embed.add_field(name='Команда', value=command, inline=False)
-            # embed.add_field(name='Пользователь', value=message.author.id, inline=False)
-            # embed.add_field(name='Дата и время', value=current_time, inline=False)
-            #
-            # # Получаем дополнительный канал для записи истории
-            # history_add_coins_channel = client.get_channel(config.CHANNEL_ID_HISTORY_ADD_COINS)
-            #
-            # # Отправляем embed сообщение в дополнительный канал
-            # await history_add_coins_channel.send(embed=embed)
+            # Получаем текущую дату и время
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+            # Создаем embed сообщение
+            color = generate_random_color()
+            embed = discord.Embed(title='Начисление монет', color=color)
+            embed.add_field(name='Кто', value=f'<@{uid}>', inline=False)
+            embed.add_field(name='Кому', value=f'<@{user_data[static_id]["uid"]}>', inline=False)
+            embed.add_field(name='Сколько монет', value=amount, inline=False)
+            embed.add_field(name='Дата и время', value=current_time, inline=False)
+
+            # Получаем дополнительный канал для записи истории
+            history_add_coins_channel = client.get_channel(config.CHANNEL_ID_HISTORY_ADD_COINS)
+
+            # Отправляем embed сообщение в дополнительный канал
+            await history_add_coins_channel.send(embed=embed)
             return
         else:
             await message.author.send(f"Статик {static_id} не найден в базе данных.")
@@ -193,8 +193,9 @@ async def paid_check(uid, author, message):
         await message.author.send(f"Подробнее в <#{config.CHANNEL_ID_SERVICE_COST}>")
 
 async def paid_vip_check(uid, author, message):
-    # static_id = author.split("|")[1].strip() if "|" in author else None
-    if await get_user_data(uid) and await get_user_data(uid)["coins"] >= 10:
+    user_data = {}
+    user_data[uid] = await get_user_data(uid)
+    if user_data[uid]["coins"] >= 10:
         # Добавляем роль "VIP Guest" пользователю
         server = message.author.guild
         role = discord.utils.get(server.roles, id=1083494100151574558)
@@ -202,6 +203,8 @@ async def paid_vip_check(uid, author, message):
             await message.author.add_roles(role)
         await message.channel.set_permissions(message.author, send_messages=False)
         await message.delete()
+        user_data[uid]["coins"] -= 10
+        await save_user_data(user_data)
         await message.author.send(
             f"{author}, Вы потратили 10 монет! Вы стали VIP! Теперь для Вас доступен новый функционал!")
         await message.author.send(f"Подробнее в <#{config.CHANNEL_ID_VIP_SERVICE_COST}>")

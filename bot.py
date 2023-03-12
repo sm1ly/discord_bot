@@ -3,7 +3,6 @@
 import discord
 import asyncio
 import config
-from datetime import datetime
 from database import get_user_data, get_user_data_by_static_id, save_user_data, save_user_data_by_static_id
 import func
 from func import client
