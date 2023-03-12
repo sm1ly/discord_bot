@@ -6,13 +6,12 @@ import config
 from datetime import datetime
 import random
 from logger import logger
-from database import create_tables_if_not_exist, load_user_data, save_user_data
+from database import create_tables_if_not_exist, get_user_data, save_user_data
 
 client = discord.Client(intents=discord.Intents.all(), dm_intents=discord.Intents.all(), log_handler=None)
 
 # Initialize table and load user data from database
 create_tables_if_not_exist()
-user_data = load_user_data()
 
 def random_hex_color():
     """Возвращает случайный цвет в формате hex"""
@@ -104,7 +103,7 @@ async def on_message(message):
         if static_id is None:
             await message.delete()
             await message.author.send("Для того чтобы получить монету, необходимо указать static_id в никнейме пользователя. Например: Ahu Enen | 123456")
-        elif uid in user_data:
+        elif get_user_data(uid):
             await message.channel.set_permissions(message.author, send_messages=False)
             await message.delete()
             await message.author.send(f"{author}, вы уже получили свою монету!")
@@ -113,7 +112,8 @@ async def on_message(message):
             if role is not None:
                 await message.author.add_roles(role)
         else:
-            user_data[uid] = {"coins": 1, "static_id": static_id}
+
+            user_data[uid] = {"coins": 1, "static_id": static_id, "guest": True, "moderate": True, "vip": False}
             save_user_data(user_data)
 
             # Добавляем роль "Guest" пользователю
@@ -187,14 +187,15 @@ async def on_message(message):
 
         await message.author.send(f"Статик {static_id} не найден в базе данных.")
 
-
     if message.content.startswith('!check_balance'):
-        if uid not in user_data:
+        if not get_user_data(uid):
             await message.author.send(f"{author}, у Вас нет баланса, видимо Вы не оплатили ни одной монеты.")
         else:
-            balance = user_data[uid]["coins"]
+            balance = get_user_data[uid]["coins"]
             await message.author.send(f"{author}, Ваш баланс: {balance} монет.")
-        await message.delete()
+
+        if isinstance(message.channel, discord.TextChannel):
+            await message.delete()
 
     if isinstance(message.channel, discord.TextChannel) and message.content.startswith('!purge'):
         if uid not in bot_administrators:
@@ -211,13 +212,6 @@ async def on_message(message):
 
     if isinstance(message.channel, discord.DMChannel) and config.REACTION_SYMBOL in message.content:
         await message.author.send(f"{message.author.display_name}, невозможно получить монету в dm. Пройдите в <#{config.CHANNEL_ID_I_PAID}> и поставьте `+`")
-
-    if isinstance(message.channel, discord.DMChannel) and message.content.startswith('!check_balance'):
-        if uid not in user_data:
-            await message.author.send(f"{author}, у Вас нет баланса, видимо Вы не оплатили ни одной монеты.")
-        else:
-            balance = user_data[uid]["coins"]
-            await message.author.send(f"{message.author}, Ваш баланс: {balance} монет.")
 
     if message.content.startswith('!menu'):
         if uid not in user_data:
