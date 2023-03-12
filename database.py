@@ -72,3 +72,12 @@ async def save_user_data_by_static_id(user_data):
                   (uid, coins, static_id, guest, moderate, vip))
     conn.commit()
     conn.close()
+
+# Save user data to database by static ID
+async def drop_table():
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute("DROP TABLE IF EXISTS user_data")
+
+    conn.commit()
+    conn.close()
