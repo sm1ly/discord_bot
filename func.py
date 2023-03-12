@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 
 import asyncio
-import discord
+import disnake
 from database import create_tables_if_not_exist, get_user_data, get_user_data_by_static_id, save_user_data, save_user_data_by_static_id
 from logger import logger
 import random
 import config
 from datetime import datetime
 
-client = discord.Client(intents=discord.Intents.all(), dm_intents=discord.Intents.all(), log_handler=None)
+client = disnake.Client(intents=disnake.Intents.all())
 
 def generate_random_color():
     # generate a random hex color code
@@ -72,64 +72,73 @@ async def threader(local_name, roles, interaction, price, uid):
     await thread.send(f"У Вас осталось {balance} монет.")
 
 async def check_balance(uid, author, message):
+    logger.info("func.py !check_balance 1")
     user_data = await get_user_data(uid)
+    logger.info("func.py !check_balance 2")
+    logger.info(user_data)
+    logger.info(f'func.py UID {uid}')
     if not user_data:
-        await message.author.send(f"{author}, у Вас нет баланса, видимо Вы не оплатили ни одной монеты.")
+        logger.info(f'func.py author {author}')
+        await author.send_message(f"{author}, у Вас нет баланса, видимо Вы не оплатили ни одной монеты.")
+        logger.info(f'func.py author2 {author}')
         return
 
     balance = user_data["coins"]
-    await message.author.send(f"{author}, Ваш баланс: {balance} монет.")
+    await author.send(f"{author}, Ваш баланс: {balance} монет.")
 
-    if isinstance(message.channel, discord.TextChannel):
+    if isinstance(message.channel, disnake.TextChannel):
         await message.delete()
 
-async def add_coins(uid, message):
-        if uid not in bot_administrators:
-            await message.author.send("У Вас нет прав для использования команды !add_coins.")
-            if isinstance(message.channel, discord.TextChannel):
-                await message.delete()
+async def add_coins(uid: int, message: disnake.Message):
+    if uid not in bot_administrators:
+        await message.author.send("У Вас нет прав для использования команды !add_coins.")
+        if isinstance(message.channel, disnake.TextChannel):
+            await message.delete()
+        return
+
+    try:
+        args = message.content.split()
+        static_id = int(args[1])
+        amount = int(args[2])
+    except:
+        await message.author.send("Invalid arguments. Usage: !add_coins <static_id> <amount>")
+        if isinstance(message.channel, disnake.TextChannel):
+            await message.delete()
+        return
+
+    user_data = await get_user_data_by_static_id(static_id)
+    if user_data:
+        if amount <= 0:
+            await message.author.send("Количество монет не может быть отрицательным!")
             return
-        try:
-            args = message.content.split()
-            static_id = int(args[1])
-            amount = int(args[2])
-        except:
-            await message.author.send("Invalid arguments. Usage: !add_coins <static_id> <amount>")
-            if isinstance(message.channel, discord.TextChannel):
-                await message.delete()
-            return
 
-        if await get_user_data_by_static_id(static_id):
-            if amount <= 0:
-                await message.author.send("Количество монет не может быть отрицательным!")
-                return
-            user_data = {}
-            user_data[static_id] = await get_user_data_by_static_id(static_id)
-            user_data[static_id]["coins"] += amount
-            await save_user_data_by_static_id(user_data)
-            await message.author.send(f"Успешно добавлено {amount} монет статику {static_id}!")
-            if isinstance(message.channel, discord.TextChannel):
-                await message.delete()
-            # Получаем текущую дату и время
-            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        user_data["coins"] += amount
+        await save_user_data_by_static_id(user_data)
 
-            # Создаем embed сообщение
-            color = generate_random_color()
-            embed = discord.Embed(title='Начисление монет', color=color)
-            embed.add_field(name='Кто', value=f'<@{uid}>', inline=False)
-            embed.add_field(name='Кому', value=f'<@{user_data[static_id]["uid"]}>', inline=False)
-            embed.add_field(name='Статик', value=f'{static_id}', inline=False)
-            embed.add_field(name='Сколько монет', value=amount, inline=False)
-            embed.add_field(name='Дата и время', value=current_time, inline=False)
+        await message.author.send(f"Успешно добавлено {amount} монет статику {static_id}!")
+        if isinstance(message.channel, disnake.TextChannel):
+            await message.delete()
 
-            # Получаем дополнительный канал для записи истории
-            history_add_coins_channel = client.get_channel(config.CHANNEL_ID_HISTORY_ADD_COINS)
+        # Получаем текущую дату и время
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-            # Отправляем embed сообщение в дополнительный канал
-            await history_add_coins_channel.send(embed=embed)
-            return
-        else:
-            await message.author.send(f"Статик {static_id} не найден в базе данных.")
+        # Создаем embed сообщение
+        color = generate_random_color()
+        embed = disnake.Embed(title='Начисление монет', color=color)
+        embed.add_field(name='Кто', value=f'<@{uid}>', inline=False)
+        embed.add_field(name='Кому', value=f'<@{user_data["uid"]}>', inline=False)
+        embed.add_field(name='Статик', value=f'{static_id}', inline=False)
+        embed.add_field(name='Сколько монет', value=amount, inline=False)
+        embed.add_field(name='Дата и время', value=current_time, inline=False)
+
+        # Получаем дополнительный канал для записи истории
+        history_add_coins_channel = client.get_channel(config.CHANNEL_ID_HISTORY_ADD_COINS)
+
+        # Отправляем embed сообщение в дополнительный канал
+        await history_add_coins_channel.send(embed=embed)
+
+    else:
+        await message.author.send(f"Статик {static_id} не найден в базе данных.")
 
 async def ready():
     logger.info('Logged in as {0.user}'.format(client))
@@ -146,14 +155,13 @@ async def ready():
         if role.id == config.ROLE_ID_TheRoyalFamily or role.id == config.ROLE_ID_TheHeadInnkeeper:
             for member in role.members:
                 bot_administrators.append(member.id)
-                user = await client.fetch_user(member.id)
-                logger.info(f"{member.id} | {user}")
+                logger.info(f"{member.id} | {member}")
     logger.info("Bot started!")
 
 async def purge(uid, message):
     if uid not in bot_administrators:
         await message.author.send("У Вас нет прав для использования команды !purge.")
-        if isinstance(message.channel, discord.TextChannel):
+        if isinstance(message.channel, disnake.TextChannel):
             await message.delete()
         return
     try:
@@ -172,7 +180,7 @@ async def paid_check(uid, author, message):
         await message.channel.set_permissions(message.author, send_messages=False)
         await message.delete()
         await message.author.send(f"{author}, вы уже получили свою монету!")
-        server = message.author.guild
+        server = message.guild
         role = discord.utils.get(server.roles, id=config.ROLE_ID_Guest)
         if role is not None:
             await message.author.add_roles(role)
@@ -182,7 +190,7 @@ async def paid_check(uid, author, message):
         user_data[uid] = {"coins": 1, "static_id": static_id, "guest": True, "moderate": False, "vip": False}
         await save_user_data(user_data)
 
-        server = message.author.guild
+        server = message.guild
         # Добавляем роль "Guest" пользователю
         await message.author.add_roles(discord.utils.get(server.roles, id=config.ROLE_ID_Guest))
         # Добавляем роль "MODERATE" пользователю
@@ -215,84 +223,45 @@ async def paid_vip_check(uid, author, message):
         await message.delete()
         await message.author.send(f"{author}, Кажется Вы не внесли взнос в размере 10 монет!")
 
-
-class MyView(discord.ui.View):
-    @discord.ui.button(label="YES", custom_id="button_yes", style=discord.ButtonStyle.green)
-    async def yes_button_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.message.edit(content="You clicked Yes!")
-
-    @discord.ui.button(label="NO", custom_id="button_no", style=discord.ButtonStyle.red)
-    async def no_button_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.message.edit(content="You clicked No!")
-
-
 async def send_moderation_message(uid, static_id):
     # Получаем канал для модерации
     channel = client.get_channel(config.CHANNEL_ID_MODERATE)
     if not channel:
         return
 
-    embed = discord.Embed(title="Проверено?", description=f'<@{uid}>', color=discord.Color.red())
-    embed.add_field(name='Static ID', value=static_id, inline=False)
-    view = discord.ui.View()
-    button_yes = discord.ui.Button(label="YES", custom_id="button_yes", style=discord.ButtonStyle.green)
-    button_no = discord.ui.Button(label="NO", custom_id="button_no", style=discord.ButtonStyle.red)
-    view.add_item(button_yes)
-    view.add_item(button_no)
-    message = await channel.send(embed=embed, view=view)
+    # Создаем экземпляр класса `Button` для кнопки "Да"
+    yes_button = disnake.ui.Button(
+        label="Да",
+        style=disnake.ButtonStyle.green
+    )
 
-    try:
-        # Ждем взаимодействия с кнопками
-        interaction = await client.wait_for("button_click", timeout=30)
+    # Создаем экземпляр класса `Button` для кнопки "Нет"
+    no_button = disnake.ui.Button(
+        label="Нет",
+        style=disnake.ButtonStyle.red
+    )
 
-        # Определяем, какая кнопка была нажата
-        if interaction.component.custom_id == "button_yes":
-            await interaction.message.edit(content="You clicked Yes!")
-        elif interaction.component.custom_id == "button_no":
-            await interaction.message.edit(content="You clicked No!")
+    # Создаем экземпляр класса `ActionRow` и добавляем в него кнопки
+    action_row = disnake.ui.ActionRow(yes_button, no_button)
 
-    except asyncio.TimeoutError:
-        await message.edit(content="Время выбора истекло.", view=None)
+    # Создаем экземпляр класса `Message` и отправляем его в канал
+    message = await channel.send(
+        "Вы уверены, что хотите продолжить?",
+        components=[action_row]
+    )
+
+    # Создаем обработчик события нажатия на кнопку
+    async def on_button_click(interaction: disnake.MessageInteraction):
+        if interaction.component.label == "Да":
+            await interaction.response.edit_message(content="Вы выбрали Да!")
+        elif interaction.component.label == "Нет":
+            await interaction.response.edit_message(content="Вы выбрали Нет!")
+        await interaction.message.remove_reaction(interaction.component.label, interaction.user)
+
+    # Добавляем обработчик на экземпляр класса `Message`
+    disnake_bot.add_listener(on_button_click)
+
+    # Возвращаем созданный экземпляр класса `Message`
+    return message
 
 
-# async def send_moderation_message(uid, static_id):
-#     # Получаем канал для модерации
-#     channel = client.get_channel(config.CHANNEL_ID_MODERATE)
-#     if not channel:
-#         return
-#
-#     embed = discord.Embed(title="Проверено?", description=f'<@{uid}>', color=discord.Color.red())
-#     embed.add_field(name='Static ID', value=static_id, inline=False)
-#     view = discord.ui.View()
-#     button_yes = discord.ui.Button(label="YES", custom_id="button_yes", style=discord.ButtonStyle.green)
-#     button_no = discord.ui.Button(label="NO", custom_id="button_no", style=discord.ButtonStyle.red)
-#     view.add_item(button_yes)
-#     view.add_item(button_no)
-#     message = await channel.send(embed=embed, view=view)
-#
-#     try:
-#         # Ждем взаимодействия с кнопками
-#         interaction = await client.wait_for("button_click", timeout=30)
-#
-#         # Определяем, какая кнопка была нажата
-#         if interaction.component.custom_id == "button_yes":
-#             await interaction.respond(type=discord.InteractionType.ChannelMessageWithSource, content="You clicked Yes!")
-#         elif interaction.component.label == "button_no":
-#             await interaction.respond(type=discord.InteractionType.ChannelMessageWithSource, content="You clicked No!")
-#
-#     except asyncio.TimeoutError:
-#         await message.edit(content="Время выбора истекло.", view=None)
-
-    # # Ждем нажатия кнопки и обрабатываем его
-    # def check(interaction: discord.Interaction) -> bool:
-    #     return interaction.message.id == message.id and interaction.user.id != client.user.id
-    #
-    # try:
-    #     interaction = await client.wait_for("button_click", timeout=60.0, check=check)
-    # except asyncio.TimeoutError:
-    #     await message.edit(embed=embed.set_footer(text="Timed out."))
-    # else:
-    #     if interaction.component.label == "YES":
-    #         await message.edit(embed=embed.set_footer(text=f"YES selected."))
-    #     elif interaction.component.label == "NO":
-    #         await message.edit(embed=embed.set_footer(text=f"NO selected."))

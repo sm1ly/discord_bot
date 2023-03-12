@@ -4,9 +4,9 @@ import logging
 import logging.handlers
 
 # Logging config
-logger = logging.getLogger('discord')
+logger = logging.getLogger('disnake')
 logger.setLevel(logging.DEBUG)
-logging.getLogger('discord.http').setLevel(logging.INFO)
+logging.getLogger('disnake.http').setLevel(logging.INFO)
 
 handler = logging.handlers.RotatingFileHandler(
     filename='bot.log',
