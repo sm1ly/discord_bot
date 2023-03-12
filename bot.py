@@ -21,7 +21,7 @@ async def on_message(message):
     logger.info('{0.author.display_name} [{0.author}]: {0.content}'.format(message))
 
     uid = message.author.id
-    author = message.author.display_name
+    author = message.author
 
     if isinstance(message.channel, disnake.TextChannel) and message.channel.id == config.CHANNEL_ID_I_PAID and message.content.startswith(config.REACTION_SYMBOL):
         await func.paid_check(uid, author, message)

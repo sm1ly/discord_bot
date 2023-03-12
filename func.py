@@ -72,15 +72,9 @@ async def threader(local_name, roles, interaction, price, uid):
     await thread.send(f"У Вас осталось {balance} монет.")
 
 async def check_balance(uid, author, message):
-    logger.info("func.py !check_balance 1")
     user_data = await get_user_data(uid)
-    logger.info("func.py !check_balance 2")
-    logger.info(user_data)
-    logger.info(f'func.py UID {uid}')
     if not user_data:
-        logger.info(f'func.py author {author}')
-        await author.send_message(f"{author}, у Вас нет баланса, видимо Вы не оплатили ни одной монеты.")
-        logger.info(f'func.py author2 {author}')
+        await author.send(f"{author.display_name}, у Вас нет баланса, видимо Вы не оплатили ни одной монеты.")
         return
 
     balance = user_data["coins"]
