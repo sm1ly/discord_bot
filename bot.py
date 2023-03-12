@@ -11,6 +11,7 @@ from database import create_tables_if_not_exist, load_user_data, save_user_data
 client = discord.Client(intents=discord.Intents.all(), dm_intents=discord.Intents.all(), log_handler=None)
 
 # Initialize table and load user data from database
+create_tables_if_not_exist()
 user_data = load_user_data()
 
 def random_hex_color():
@@ -86,7 +87,6 @@ async def on_ready():
                 bot_administrators.append(member.id)
                 user = await client.fetch_user(member.id)
                 logger.info(f"{member.id} | {user}")
-    create_tables_if_not_exist()
     logger.info("Bot started!")
 
 @client.event

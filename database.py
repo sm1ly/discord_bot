@@ -10,7 +10,7 @@ def create_tables_if_not_exist():
     c.execute('''CREATE TABLE IF NOT EXISTS user_data
                 (uid INTEGER PRIMARY KEY,
                  coins INTEGER,
-                 static_id TEXT,
+                 static_id INTEGER,
                  guest BOOL,
                  moderate BOOL,
                  vip BOOL)''')
@@ -37,3 +37,4 @@ def save_user_data(user_data):
         c.execute('REPLACE INTO user_data (uid, coins, static_id) VALUES (?, ?, ?)', (uid, coins, static_id))
     conn.commit()
     conn.close()
+
