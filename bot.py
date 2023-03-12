@@ -43,7 +43,7 @@ async def on_message(message):
         await message.author.send(f"{message.author.display_name}, невозможно получить монету в dm. Пройдите в <#{config.CHANNEL_ID_I_PAID}> и поставьте `+`")
 
     if message.content.startswith('!menu'):
-            await func.menu(uid, message)
+        await func.menu(uid, message)
 
 @client.event
 async def on_interaction(interaction):
