@@ -1,54 +1,24 @@
 #!/usr/bin/python3
 
 import discord
-import sqlite3
-import logging
 import asyncio
-import logging.handlers
 import config
-
-# Logging config
-logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
-logging.getLogger('discord.http').setLevel(logging.INFO)
-
-handler = logging.handlers.RotatingFileHandler(
-    filename='bot.log',
-    encoding='utf-8',
-    maxBytes=32 * 1024 * 1024,  # 32 MiB
-    backupCount=5,  # Rotate through 5 files
-)
-dt_fmt = '%Y-%m-%d %H:%M:%S'
-formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', dt_fmt, style='{')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
+from datetime import datetime
+import random
+from logger import logger
+from database import create_tables_if_not_exist, load_user_data, save_user_data
 
 client = discord.Client(intents=discord.Intents.all(), dm_intents=discord.Intents.all(), log_handler=None)
 
-# Load user data from database
-def load_user_data():
-    user_data = {}
-    conn = sqlite3.connect('mydatabase.db')
-    c = conn.cursor()
-    for row in c.execute('SELECT * FROM user_data'):
-        user_data[row[0]] = {"coins": row[1], "static_id": row[2]}
-    conn.close()
-    return user_data
-
-# Save user data to database
-def save_user_data(user_data):
-    conn = sqlite3.connect('mydatabase.db')
-    c = conn.cursor()
-    for uid, data in user_data.items():
-        coins = data["coins"]
-        static_id = data["static_id"]
-        c.execute('REPLACE INTO user_data (uid, coins, static_id) VALUES (?, ?, ?)', (uid, coins, static_id))
-    conn.commit()
-    conn.close()
-
 # Initialize table and load user data from database
 user_data = load_user_data()
+
+def random_hex_color():
+    """Возвращает случайный цвет в формате hex"""
+    r = random.randint(0, 255)
+    g = random.randint(0, 255)
+    b = random.randint(0, 255)
+    return "0x{:02x}{:02x}{:02x}".format(r, g, b)
 
 async def menu(message):
     buttons = [
@@ -102,20 +72,29 @@ async def threader(local_name, roles, interaction, price, uid):
 
 @client.event
 async def on_ready():
-    logging.info('Logged in as {0.user}'.format(client))
+    logger.info('Logged in as {0.user}'.format(client))
     global guild
-    guild = client.guilds[0]  # получаем первый доступный сервер
+    guild = client.get_guild(config.GUILD_ID)
     # for role in guild.roles:
-    #     print(f"{role.name} - {role.id}")  # выводим имя и ID каждой роли
-    print("Ready for work!")
+    #     logger.info(f"{role.name} - {role.id}")  # выводим имя и ID каждой роли
+    global bot_administrators
+    logger.info("Bot administrators:")
+    bot_administrators = []
+    for role in guild.roles:
+        if role.id == config.ROLE_ID_TheRoyalFamily or role.id == config.ROLE_ID_TheHeadInnkeeper:
+            for member in role.members:
+                bot_administrators.append(member.id)
+                user = await client.fetch_user(member.id)
+                logger.info(f"{member.id} | {user}")
+    create_tables_if_not_exist()
+    logger.info("Bot started!")
 
 @client.event
 async def on_message(message):
     if message.author == client.user:
         return
 
-    logger.info(f'{message.author.display_name} [{message.author}]: {message.content}')
-    # print(f'[{now}] {message.author.display_name} [{message.author}]: {message.content}')
+    logger.info('{0.author.display_name} [{0.author}]: {0.content}'.format(message))
 
     uid = message.author.id
     author = message.author.display_name
@@ -164,10 +143,11 @@ async def on_message(message):
             await message.delete()
             await message.author.send(f"{author}, Кажется Вы не внесли взнос в размере 10 монет!")
 
-    if isinstance(message.channel, discord.TextChannel) and message.content.startswith('!add_coins'):
-        if config.ROLE_ID_TheRoyalFamily not in [role.id for role in message.author.roles] and config.ROLE_ID_TheHeadInnkeeper not in [role.id for role in message.author.roles]:
+    if message.content.startswith('!add_coins'):
+        if uid not in bot_administrators:
             await message.author.send("У Вас нет прав для использования команды !add_coins.")
-            await message.delete()
+            if isinstance(message.channel, discord.TextChannel):
+                await message.delete()
             return
 
         try:
@@ -176,7 +156,8 @@ async def on_message(message):
             amount = int(args[2])
         except:
             await message.author.send("Invalid arguments. Usage: !add_coins <static_id> <amount>")
-            await message.delete()
+            if isinstance(message.channel, discord.TextChannel):
+                await message.delete()
             return
 
         for uid, data in user_data.items():
@@ -184,7 +165,24 @@ async def on_message(message):
                 data["coins"] += amount
                 save_user_data(user_data)
                 await message.author.send(f"Успешно добавлено {amount} монет статику {static_id}!")
-                await message.delete()
+                if isinstance(message.channel, discord.TextChannel):
+                    await message.delete()
+                # Получаем текущую дату и время
+                current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+                # Создаем embed сообщение
+                random_color = random_hex_color()
+                print(random_color)
+                embed = discord.Embed(title='current_time', color=random_color)
+                embed.add_field(name='Команда', value=command, inline=False)
+                embed.add_field(name='Пользователь', value=message.author.id, inline=False)
+                embed.add_field(name='Дата и время', value=current_time, inline=False)
+
+                # Получаем дополнительный канал для записи истории
+                history_add_coins_channel = client.get_channel(config.CHANNEL_ID_HISTORY_ADD_COINS)
+
+                # Отправляем embed сообщение в дополнительный канал
+                await history_add_coins_channel.send(embed=embed)
                 return
 
         await message.author.send(f"Статик {static_id} не найден в базе данных.")
@@ -199,7 +197,7 @@ async def on_message(message):
         await message.delete()
 
     if isinstance(message.channel, discord.TextChannel) and message.content.startswith('!purge'):
-        if config.ROLE_ID_TheRoyalFamily not in [role.id for role in message.author.roles] and config.ROLE_ID_TheHeadInnkeeper not in [role.id for role in message.author.roles]:
+        if uid not in bot_administrators:
             await message.author.send("У Вас нет прав для использования команды !purge.")
             await message.delete()
             return
