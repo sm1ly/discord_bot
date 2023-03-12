@@ -15,43 +15,48 @@ def random_hex_color():
     b = random.randint(0, 255)
     return "0x{:02x}{:02x}{:02x}".format(r, g, b)
 
-async def menu(message):
-    buttons = [
-        discord.ui.Button(label="Организация транспортировки | 2 Монеты", custom_id="button_1",style=discord.ButtonStyle.blurple),
-        discord.ui.Button(label="Услуги консьержа 24/7 | 1 монета", custom_id="button_2",style=discord.ButtonStyle.blurple),
-        discord.ui.Button(label="Юридическая помощь | 1 монета", custom_id="button_3",style=discord.ButtonStyle.green),
-        discord.ui.Button(label="Услуги аренды спортивного инвентаря | Индивидуально", custom_id="button_4",style=discord.ButtonStyle.blurple, disabled=True),
-        discord.ui.Button(label="Сервис удаления персональных данных | 10 монет", custom_id="button_5",style=discord.ButtonStyle.green, disabled=True),
-        discord.ui.Button(label="Эксклюзивные вечеринки | 10 монет", custom_id="button_6",style=discord.ButtonStyle.red, disabled=True),
-        discord.ui.Button(label="Специальные мероприятия | 10 монет", custom_id="button_7",style=discord.ButtonStyle.red, disabled=True)
-    ]
-    buttons_vip = [
-        discord.ui.Button(label="Организация транспортировки | 2 Монеты", custom_id="button_1",style=discord.ButtonStyle.blurple),
-        discord.ui.Button(label="Услуги консьержа 24/7 | 1 монета", custom_id="button_2",style=discord.ButtonStyle.blurple),
-        discord.ui.Button(label="Юридическая помощь | 1 монета", custom_id="button_3",style=discord.ButtonStyle.green),
-        discord.ui.Button(label="Услуги аренды спортивного инвентаря | Индивидуально", custom_id="button_4",style=discord.ButtonStyle.blurple),
-        discord.ui.Button(label="Сервис удаления персональных данных | 10 монет", custom_id="button_5",style=discord.ButtonStyle.green),
-        discord.ui.Button(label="Эксклюзивные вечеринки | 10 монет", custom_id="button_6",style=discord.ButtonStyle.red),
-        discord.ui.Button(label="Специальные мероприятия | 10 монет", custom_id="button_7",style=discord.ButtonStyle.red)
-    ]
-    view = discord.ui.View()
-    for button in buttons:
-        view.add_item(button)
-
-    # отправляем сообщение пользователю
-    msg = await message.author.send("Выберите услугу, которую хотите приобрести:", view=view)
-
-    # удаляем исходное сообщение
-    if isinstance(message.channel, discord.TextChannel):
+async def menu(uid, message):
+    if uid not in user_data:
+        await message.author.send(
+            f"Кажется Вы еще не являетесь нашим Гостем или VIP-Гостем! Для того чтобы стать нашим гостем и получить доступ к услугам, необходимо приобрести хотя бы одну монету. Для VIP-гостей, которым доступен расширенный спектр услуг, необходимо внести единоразовый взнос в виде 10 монет. Подробнее в <#{config.CHANNEL_ID_HOW_WE_WORK}>")
         await message.delete()
-
-    # ждем выбора пользователя или таймаута
-    try:
-        interaction = await client.wait_for("button_click", timeout=30.0, check=lambda i: i.message.id == msg.id and i.user.id == message.author.id)
-    except asyncio.TimeoutError:
-        await msg.edit(content="Время выбора истекло.", view=None)
     else:
-        on_interaction(interaction)
+        buttons = [
+            discord.ui.Button(label="Организация транспортировки | 2 Монеты", custom_id="button_1",style=discord.ButtonStyle.blurple),
+            discord.ui.Button(label="Услуги консьержа 24/7 | 1 монета", custom_id="button_2",style=discord.ButtonStyle.blurple),
+            discord.ui.Button(label="Юридическая помощь | 1 монета", custom_id="button_3",style=discord.ButtonStyle.green),
+            discord.ui.Button(label="Услуги аренды спортивного инвентаря | Индивидуально", custom_id="button_4",style=discord.ButtonStyle.blurple, disabled=True),
+            discord.ui.Button(label="Сервис удаления персональных данных | 10 монет", custom_id="button_5",style=discord.ButtonStyle.green, disabled=True),
+            discord.ui.Button(label="Эксклюзивные вечеринки | 10 монет", custom_id="button_6",style=discord.ButtonStyle.red, disabled=True),
+            discord.ui.Button(label="Специальные мероприятия | 10 монет", custom_id="button_7",style=discord.ButtonStyle.red, disabled=True)
+        ]
+        buttons_vip = [
+            discord.ui.Button(label="Организация транспортировки | 2 Монеты", custom_id="button_1",style=discord.ButtonStyle.blurple),
+            discord.ui.Button(label="Услуги консьержа 24/7 | 1 монета", custom_id="button_2",style=discord.ButtonStyle.blurple),
+            discord.ui.Button(label="Юридическая помощь | 1 монета", custom_id="button_3",style=discord.ButtonStyle.green),
+            discord.ui.Button(label="Услуги аренды спортивного инвентаря | Индивидуально", custom_id="button_4",style=discord.ButtonStyle.blurple),
+            discord.ui.Button(label="Сервис удаления персональных данных | 10 монет", custom_id="button_5",style=discord.ButtonStyle.green),
+            discord.ui.Button(label="Эксклюзивные вечеринки | 10 монет", custom_id="button_6",style=discord.ButtonStyle.red),
+            discord.ui.Button(label="Специальные мероприятия | 10 монет", custom_id="button_7",style=discord.ButtonStyle.red)
+        ]
+        view = discord.ui.View()
+        for button in buttons:
+            view.add_item(button)
+
+        # отправляем сообщение пользователю
+        msg = await message.author.send("Выберите услугу, которую хотите приобрести:", view=view)
+
+        # удаляем исходное сообщение
+        if isinstance(message.channel, discord.TextChannel):
+            await message.delete()
+
+        # ждем выбора пользователя или таймаута
+        try:
+            interaction = await client.wait_for("button_click", timeout=30.0, check=lambda i: i.message.id == msg.id and i.user.id == message.author.id)
+        except asyncio.TimeoutError:
+            await msg.edit(content="Время выбора истекло.", view=None)
+        else:
+            on_interaction(interaction)
 
 async def threader(local_name, roles, interaction, price, uid):
     user_data[uid]["coins"] -= price
@@ -154,3 +159,52 @@ async def purge(uid, message):
         await message.channel.send("Successfully deleted the last 50 messages.", delete_after=5.0)
     except Exception as e:
         await message.channel.send(f"An error occurred: {e}")
+
+async def paid_check(uid, author, message):
+    static_id = author.split("|")[1].strip() if "|" in author else None
+    if static_id is None:
+        await message.delete()
+        await message.author.send(
+            "Для того чтобы получить монету, необходимо указать static_id в никнейме пользователя. Например: Ahu Enen | 123456")
+    elif await get_user_data(uid) and await get_user_data_by_static_id(static_id):
+        await message.channel.set_permissions(message.author, send_messages=False)
+        await message.delete()
+        await message.author.send(f"{author}, вы уже получили свою монету!")
+        server = message.author.guild
+        role = discord.utils.get(server.roles, id=1083494042035298456)
+        if role is not None:
+            await message.author.add_roles(role)
+    else:
+
+        user_data = {}
+        user_data[uid] = {"coins": 1, "static_id": static_id, "guest": True, "moderate": True, "vip": False}
+        save_user_data(user_data)
+
+        # Добавляем роль "Guest" пользователю
+        server = message.author.guild
+        role = discord.utils.get(server.roles, id=1083494042035298456)
+        if role is not None:
+            await message.author.add_roles(role)
+
+        await message.channel.set_permissions(message.author, send_messages=False)
+        await message.delete()
+        await message.author.send(
+            f"{author}, вы получили свою монету! И стали нашим Гостем. Теперь для Вас доступен новый функционал!")
+        await message.author.send(f"Подробнее в <#{config.CHANNEL_ID_SERVICE_COST}>")
+
+async def paid_vip_check(uid, author, message):
+    # static_id = author.split("|")[1].strip() if "|" in author else None
+    if await get_user_data(uid) and await get_user_data(uid)["coins"] >= 10:
+        # Добавляем роль "VIP Guest" пользователю
+        server = message.author.guild
+        role = discord.utils.get(server.roles, id=1083494100151574558)
+        if role is not None:
+            await message.author.add_roles(role)
+        await message.channel.set_permissions(message.author, send_messages=False)
+        await message.delete()
+        await message.author.send(
+            f"{author}, Вы потратили 10 монет! Вы стали VIP! Теперь для Вас доступен новый функционал!")
+        await message.author.send(f"Подробнее в <#{config.CHANNEL_ID_VIP_SERVICE_COST}>")
+    else:
+        await message.delete()
+        await message.author.send(f"{author}, Кажется Вы не внесли взнос в размере 10 монет!")
