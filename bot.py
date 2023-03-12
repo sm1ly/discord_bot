@@ -44,9 +44,9 @@ async def on_message(message):
     if message.content.startswith('!menu'):
         await func.menu(uid, message)
 
-@client.event
-async def on_interaction(interaction):
-    await interactions(interaction)
+# @client.event
+# async def on_interaction(interaction):
+#     await interactions(interaction)
 
 
 client.run(config.token)

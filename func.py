@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import asyncio
 import discord
 from database import create_tables_if_not_exist, get_user_data, get_user_data_by_static_id, save_user_data, save_user_data_by_static_id
 from logger import logger
@@ -60,7 +61,7 @@ async def menu(uid, message):
 
 async def threader(local_name, roles, interaction, price, uid):
     user_data[uid]["coins"] -= price
-    save_user_data(user_data)
+    await save_user_data(user_data)
     channel = client.get_channel(config.CHANNEL_ID_PAID_SERVICE)  # получаем объект канала по ID
     thread = await channel.create_thread(name=f"{local_name} | Guest", reason="Новый заказ", invitable=False)
     user_mention = interaction.user.mention
@@ -117,6 +118,7 @@ async def add_coins(uid, message):
             embed = discord.Embed(title='Начисление монет', color=color)
             embed.add_field(name='Кто', value=f'<@{uid}>', inline=False)
             embed.add_field(name='Кому', value=f'<@{user_data[static_id]["uid"]}>', inline=False)
+            embed.add_field(name='Статик', value=f'{static_id}', inline=False)
             embed.add_field(name='Сколько монет', value=amount, inline=False)
             embed.add_field(name='Дата и время', value=current_time, inline=False)
 
@@ -171,26 +173,27 @@ async def paid_check(uid, author, message):
         await message.delete()
         await message.author.send(f"{author}, вы уже получили свою монету!")
         server = message.author.guild
-        role = discord.utils.get(server.roles, id=1083494042035298456)
+        role = discord.utils.get(server.roles, id=config.ROLE_ID_Guest)
         if role is not None:
             await message.author.add_roles(role)
     else:
 
         user_data = {}
-        user_data[uid] = {"coins": 1, "static_id": static_id, "guest": True, "moderate": True, "vip": False}
-        save_user_data(user_data)
+        user_data[uid] = {"coins": 1, "static_id": static_id, "guest": True, "moderate": False, "vip": False}
+        await save_user_data(user_data)
 
-        # Добавляем роль "Guest" пользователю
         server = message.author.guild
-        role = discord.utils.get(server.roles, id=1083494042035298456)
-        if role is not None:
-            await message.author.add_roles(role)
+        # Добавляем роль "Guest" пользователю
+        await message.author.add_roles(discord.utils.get(server.roles, id=config.ROLE_ID_Guest))
+        # Добавляем роль "MODERATE" пользователю
+        await message.author.add_roles(discord.utils.get(server.roles, id=config.ROLE_ID_MODERATE))
 
-        await message.channel.set_permissions(message.author, send_messages=False)
+        # await message.channel.set_permissions(message.author, send_messages=False)
         await message.delete()
         await message.author.send(
-            f"{author}, вы получили свою монету! И стали нашим Гостем. Теперь для Вас доступен новый функционал!")
-        await message.author.send(f"Подробнее в <#{config.CHANNEL_ID_SERVICE_COST}>")
+            f"{author}, Вы получили свою монету и стали нашим Гостем. После проверки Вам будет доступен новый функционал!")
+        await message.author.send(f"Подробнее в <#{config.CHANNEL_ID_MODERATE}>")
+        await send_moderation_message(uid, static_id)
 
 async def paid_vip_check(uid, author, message):
     user_data = {}
@@ -198,7 +201,7 @@ async def paid_vip_check(uid, author, message):
     if user_data[uid]["coins"] >= 10:
         # Добавляем роль "VIP Guest" пользователю
         server = message.author.guild
-        role = discord.utils.get(server.roles, id=1083494100151574558)
+        role = discord.utils.get(server.roles, id=config.ROLE_ID_VIP)
         if role is not None:
             await message.author.add_roles(role)
         await message.channel.set_permissions(message.author, send_messages=False)
@@ -211,3 +214,85 @@ async def paid_vip_check(uid, author, message):
     else:
         await message.delete()
         await message.author.send(f"{author}, Кажется Вы не внесли взнос в размере 10 монет!")
+
+
+class MyView(discord.ui.View):
+    @discord.ui.button(label="YES", custom_id="button_yes", style=discord.ButtonStyle.green)
+    async def yes_button_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.message.edit(content="You clicked Yes!")
+
+    @discord.ui.button(label="NO", custom_id="button_no", style=discord.ButtonStyle.red)
+    async def no_button_callback(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.message.edit(content="You clicked No!")
+
+
+async def send_moderation_message(uid, static_id):
+    # Получаем канал для модерации
+    channel = client.get_channel(config.CHANNEL_ID_MODERATE)
+    if not channel:
+        return
+
+    embed = discord.Embed(title="Проверено?", description=f'<@{uid}>', color=discord.Color.red())
+    embed.add_field(name='Static ID', value=static_id, inline=False)
+    view = discord.ui.View()
+    button_yes = discord.ui.Button(label="YES", custom_id="button_yes", style=discord.ButtonStyle.green)
+    button_no = discord.ui.Button(label="NO", custom_id="button_no", style=discord.ButtonStyle.red)
+    view.add_item(button_yes)
+    view.add_item(button_no)
+    message = await channel.send(embed=embed, view=view)
+
+    try:
+        # Ждем взаимодействия с кнопками
+        interaction = await client.wait_for("button_click", timeout=30)
+
+        # Определяем, какая кнопка была нажата
+        if interaction.component.custom_id == "button_yes":
+            await interaction.message.edit(content="You clicked Yes!")
+        elif interaction.component.custom_id == "button_no":
+            await interaction.message.edit(content="You clicked No!")
+
+    except asyncio.TimeoutError:
+        await message.edit(content="Время выбора истекло.", view=None)
+
+
+# async def send_moderation_message(uid, static_id):
+#     # Получаем канал для модерации
+#     channel = client.get_channel(config.CHANNEL_ID_MODERATE)
+#     if not channel:
+#         return
+#
+#     embed = discord.Embed(title="Проверено?", description=f'<@{uid}>', color=discord.Color.red())
+#     embed.add_field(name='Static ID', value=static_id, inline=False)
+#     view = discord.ui.View()
+#     button_yes = discord.ui.Button(label="YES", custom_id="button_yes", style=discord.ButtonStyle.green)
+#     button_no = discord.ui.Button(label="NO", custom_id="button_no", style=discord.ButtonStyle.red)
+#     view.add_item(button_yes)
+#     view.add_item(button_no)
+#     message = await channel.send(embed=embed, view=view)
+#
+#     try:
+#         # Ждем взаимодействия с кнопками
+#         interaction = await client.wait_for("button_click", timeout=30)
+#
+#         # Определяем, какая кнопка была нажата
+#         if interaction.component.custom_id == "button_yes":
+#             await interaction.respond(type=discord.InteractionType.ChannelMessageWithSource, content="You clicked Yes!")
+#         elif interaction.component.label == "button_no":
+#             await interaction.respond(type=discord.InteractionType.ChannelMessageWithSource, content="You clicked No!")
+#
+#     except asyncio.TimeoutError:
+#         await message.edit(content="Время выбора истекло.", view=None)
+
+    # # Ждем нажатия кнопки и обрабатываем его
+    # def check(interaction: discord.Interaction) -> bool:
+    #     return interaction.message.id == message.id and interaction.user.id != client.user.id
+    #
+    # try:
+    #     interaction = await client.wait_for("button_click", timeout=60.0, check=check)
+    # except asyncio.TimeoutError:
+    #     await message.edit(embed=embed.set_footer(text="Timed out."))
+    # else:
+    #     if interaction.component.label == "YES":
+    #         await message.edit(embed=embed.set_footer(text=f"YES selected."))
+    #     elif interaction.component.label == "NO":
+    #         await message.edit(embed=embed.set_footer(text=f"NO selected."))
