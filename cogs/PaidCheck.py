@@ -1,6 +1,6 @@
 import disnake
 from config import CHANNEL_ID_I_PAID, REACTION_SYMBOL, CHANNEL_ID_MODERATE, ROLE_ID_Guest, \
-    ROLE_ID_MODERATE
+    ROLE_ID_MODERATE, GUILD_ID
 from disnake.ext import commands
 from func.logger import logger
 from database import get_user_data, get_user_data_by_static_id, save_user_data, \
@@ -39,19 +39,19 @@ class PaidCheck(commands.Cog):
             elif await get_user_data(message.author.id) and await get_user_data_by_static_id(static_id):
                 # await message.channel.set_permissions(message.author, send_messages=False)
                 await message.author.send(f"{message.author.display_name}, вы уже получили свою монету!")
-                server = test_guilds
-                role = disnake.utils.get(server.roles, id=config.ROLE_ID_Guest)
+                guild = self.bot.get_guild(GUILD_ID)
+                role = disnake.utils.get(guild.roles, id=ROLE_ID_Guest)
                 if role is not None:
                     await message.author.add_roles(role)
             else:
                 user_data = {message.author.id: {"coins": 1, "static_id": static_id, "guest": True, "moderate": False, "vip": False}}
                 await save_user_data(user_data)
 
-                server = message.guild
+                guild = self.bot.get_guild(GUILD_ID)
                 # Добавляем роль "Guest" пользователю
-                await message.author.add_roles(disnake.utils.get(server.roles, id=ROLE_ID_Guest))
+                await message.author.add_roles(disnake.utils.get(guild.roles, id=ROLE_ID_Guest))
                 # Добавляем роль "MODERATE" пользователю
-                await message.author.add_roles(disnake.utils.get(server.roles, id=ROLE_ID_MODERATE))
+                await message.author.add_roles(disnake.utils.get(guild.roles, id=ROLE_ID_MODERATE))
 
                 # await message.channel.set_permissions(message.author, send_messages=False)
                 await message.author.send(f"{message.author.display_name}, Вы получили свою монету и стали нашим Гостем. После проверки Вам будет доступен новый функционал!")

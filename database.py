@@ -3,6 +3,7 @@
 import sqlite3
 from config import DATABASE
 from func.logger import logger
+import pprint
 
 
 # Create base if not exist
@@ -69,7 +70,6 @@ async def save_user_data(user_data):
 
 # Save user data to database by static ID
 async def save_user_data_by_static_id(user_data):
-    logger.info('{}'.format(user_data))
     conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
     for static_id, data in user_data.items():

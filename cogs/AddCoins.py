@@ -35,13 +35,13 @@ class AddCoins(commands.Cog):
             color = generate_random_color()
             embed = disnake.Embed(title='Начисление монет', color=color)
             embed.add_field(name='Кто', value=f'<@{inter.author.id}>', inline=False)
-            embed.add_field(name='Кому', value=f'<@{user_data["inter.author.id"]}>', inline=False)
+            embed.add_field(name='Кому', value=f'<@{user_data[static_id]["uid"]}>', inline=False)
             embed.add_field(name='Статик', value=f'{static_id}', inline=False)
             embed.add_field(name='Сколько монет', value=amount, inline=False)
             embed.add_field(name='Дата и время', value=current_time, inline=False)
 
             # Получаем дополнительный канал для записи истории
-            history_add_coins_channel = client.get_channel(CHANNEL_ID_HISTORY_ADD_COINS)
+            history_add_coins_channel = self.bot.get_channel(CHANNEL_ID_HISTORY_ADD_COINS)
 
             # Отправляем embed сообщение в дополнительный канал
             await history_add_coins_channel.send(embed=embed)

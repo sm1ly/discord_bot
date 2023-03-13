@@ -1,61 +1,42 @@
-#!/usr/bin/python3
-
+# Import the necessary libraries.
 import disnake
-import asyncio
+from disnake.ext import commands
 import config
-from database import get_user_data, get_user_data_by_static_id, save_user_data, save_user_data_by_static_id
-import func
-from func import client
-from logger import logger
-from interactions import interactions
+from func.logger import logger
+from database import create_tables_if_not_exist, drop_table
 
 
-@client.event
+# Creating a commands.Bot() instance, and assigning it to "bot"
+bot = commands.Bot(intents=disnake.Intents.all(), command_prefix="/")
+
+# Define the bot_administrators list
+bot_administrators = []
+
+
+# When the bot is ready, run this code.
+@bot.event
 async def on_ready():
-    await func.ready()
+    logger.info(f'Logged in as {bot.user}')
+    # Initialize table and load user data from database
+    # await drop_table()
+    await create_tables_if_not_exist()
+    guild = bot.get_guild(config.GUILD_ID)
+    logger.info("Bot administrators:")
+    for role in guild.roles:
+        if role.id == config.ROLE_ID_TheRoyalFamily or role.id == config.ROLE_ID_TheHeadInnkeeper:
+            for member in role.members:
+                bot_administrators.append(member.id)
+                logger.info(f"{member.id} | {member}")
+    logger.info("Bot started!")
 
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
+# обработчик ошибок
+@bot.event
+async def on_command_error(ctx, error):
+    # логируем ошибки
+    logger.error(f'Ошибка в команде {ctx.command}: {error}', exc_info=error)
 
-    logger.info('{0.author.display_name} [{0.author}]: {0.content}'.format(message))
-
-    uid = message.author.id
-    author = message.author
-
-    if isinstance(message.channel,
-                  disnake.TextChannel) and message.channel.id == config.CHANNEL_ID_I_PAID and message.content.startswith(
-            config.REACTION_SYMBOL):
-        await func.paid_check(uid, author, message)
-
-    if isinstance(message.channel,
-                  disnake.TextChannel) and message.channel.id == config.CHANNEL_ID_I_PAID_VIP and message.content.startswith(
-            config.REACTION_SYMBOL):
-        await func.paid_vip_check(uid, author, message)
-
-    if message.content.startswith('!add_coins'):
-        await func.add_coins(uid, message)
-
-    if message.content.startswith('!check_balance'):
-        logger.info("bot.py !check_balance")
-        await func.check_balance(uid, author, message)
-
-    if isinstance(message.channel, disnake.TextChannel) and message.content.startswith('!purge'):
-        await func.purge(uid, message)
-
-    if isinstance(message.channel, disnake.DMChannel) and config.REACTION_SYMBOL in message.content:
-        await message.author.send(
-            f"{message.author.display_name}, невозможно получить монету в dm. Пройдите в <#{config.CHANNEL_ID_I_PAID}> и поставьте `+`")
-
-    if message.content.startswith('!menu'):
-        await func.menu(uid, message)
-
-
-# @client.event
-# async def on_interaction(interaction):
-#     await interactions(interaction)
-
-
-client.run(config.token)
+bot.load_extension("cogs.PaidCheck")
+bot.load_extension("cogs.Purge")
+bot.load_extension("cogs.AddCoins")
+bot.run(config.token)
