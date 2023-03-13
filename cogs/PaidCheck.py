@@ -1,6 +1,6 @@
 import disnake
 from config import CHANNEL_ID_I_PAID, REACTION_SYMBOL, CHANNEL_ID_MODERATE, ROLE_ID_Guest, \
-    ROLE_ID_MODERATE, GUILD_ID, COLOR_RED
+    ROLE_ID_MODERATE, GUILD_ID, COLOR_success, COLOR_danger, COLOR_primary
 from disnake.ext import commands
 from func.logger import logger
 from func.database import get_user_data, get_user_data_by_static_id, save_user_data, \
@@ -11,38 +11,47 @@ from func.generate_random_color import generate_random_color
 
 
 class ModerateButton(View):
-    def __init__(self, moderate_uid):
+    def __init__(self, moderate_uid, embed_moderate):
         super().__init__()
         self.moderate_uid = moderate_uid
+        self.embed_moderate = embed_moderate
 
     @button(label="YES", style=disnake.ButtonStyle.success)
     async def moderate_button_yes(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         if interaction.author.id not in bot_administrators:
             await interaction.response.send_message("У Вас нет прав нажимать на эту кнопку.", ephemeral=True)
             return
-        await interaction.response.send_message("# TODO YES ACTION", ephemeral=True)
+        self.embed_moderate.title = 'ДА'
+        color_success = int(COLOR_success.format(), 16)
+        self.embed_moderate.color = color_success
+        await interaction.response.edit_message(embed=self.embed_moderate, view=None)
+        # self.stop()
 
     @button(label="NO", style=disnake.ButtonStyle.danger)
     async def moderate_button_no(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
         if interaction.author.id not in bot_administrators:
             await interaction.response.send_message("У Вас нет прав нажимать на эту кнопку.", ephemeral=True)
             return
+        self.embed_moderate.title = 'Нет | Изгнан'
+        color_danger = int(COLOR_danger.format(), 16)
+        self.embed_moderate.color = color_danger
+        await interaction.response.edit_message(embed=self.embed_moderate, view=None)
         guild = await interaction.client.fetch_guild(GUILD_ID)
         member = await guild.fetch_member(self.moderate_uid)
         if member:
             # Создаем embed сообщение
             color = generate_random_color()
-            embed = disnake.Embed(title='', color=color)
-            embed.add_field(name='Вас Изгнали.', value="""Позвольте мне представить величественную картину, которая развернулась перед моими глазами. Пятеро громадных амбалов, как в греческой мифологии, мощными телами и устрашающими чертами лица, свирепо вытолкнули Вас из священных стен элитного отеля "The Royal Game".
+            embed_kick = disnake.Embed(title='Вас Изгнали.', color=color)
+            embed_kick.add_field(name='\u200B', value="""Позвольте мне представить величественную картину, которая развернулась перед моими глазами. Пятеро громадных амбалов, как в греческой мифологии, мощными телами и устрашающими чертами лица, свирепо вытолкнули Вас из священных стен элитного отеля "The Royal Game".
             
             Это было зрелище, которое нельзя забыть. Мощный и дерзкий, этот акт принес вечную память о героических усилиях этих амбалов, которые настаивали на своих правах и не желали ими жертвовать. Их сила и могущество были непоколебимы, и они использовали их, чтобы защитить свой дом от нежелательных гостей.""", inline=False)
-            
-            embed.add_field(name='Вы Нарушили.', value="""Но, возможно, Вы, уважаемый собеседник, нарушили некоторые правила поведения, пренебрегли этикетом и не уважили привилегии, предоставленные Вам в этом роскошном отеле. Именно поэтому эти амбалы, будучи стражами порядка и справедливости, приняли такие жесткие меры, чтобы защитить свой дом от Вашего непочтительного поведения.
+            # \u200B Вы Нарушили.
+            embed_kick.add_field(name="\u200B", value="""Но, возможно, Вы, уважаемый собеседник, нарушили некоторые правила поведения, пренебрегли этикетом и не уважили привилегии, предоставленные Вам в этом роскошном отеле. Именно поэтому эти амбалы, будучи стражами порядка и справедливости, приняли такие жесткие меры, чтобы защитить свой дом от Вашего непочтительного поведения.
             
             Так что вспомните этот день, уважаемый собеседник, как день, когда Вы столкнулись с истинной мощью и силой, когда Вы поняли, что элитный отель "The Royal Game" не просто так называется "королевской игрой". И пусть это неприятное событие станет для Вас незабываемым уроком в уважении к другим и в общении с окружающими.""", inline=False)
-            await member.send(embed=embed)
+            await member.send(embed=embed_kick)
             await member.kick(reason="Kicked by CTL | FOR THE GLORY !")
-            await interaction.response.send_message("Kicked by CTL | FOR THE GLORY !", ephemeral=True)
+            # self.stop()
 
 
 class PaidCheck(commands.Cog):
@@ -84,14 +93,15 @@ class PaidCheck(commands.Cog):
                 await message.author.send(f"Подробнее в <#{CHANNEL_ID_MODERATE}>")
 
                 # Создаем embed сообщение
-                color = int(COLOR_RED.format(), 16)
-                embed = disnake.Embed(title='Заплатил за 1 монету?', color=color)
-                embed.add_field(name='Кто', value=f'<@{message.author.id}>', inline=False)
-                embed.add_field(name='Статик', value=f'{user_data[message.author.id]["static_id"]}', inline=False)
+                color_primary = int(COLOR_primary.format(), 16)
+                embed_moderate = disnake.Embed(title='Заплатил за 1 монету?', color=color_primary)
+                embed_moderate.add_field(name='Кто', value=f'<@{message.author.id}>', inline=False)
+                embed_moderate.add_field(name='Статик', value=f'{user_data[message.author.id]["static_id"]}', inline=False)
 
                 moderate_channel = self.bot.get_channel(CHANNEL_ID_MODERATE)
                 moderate_uid = message.author.id
-                await moderate_channel.send(embed=embed, view=ModerateButton(moderate_uid))
+                # msg = await moderate_channel.send(embed=embed_moderate, view=ModerateButton(moderate_uid, msg))
+                await moderate_channel.send(embed=embed_moderate, view=ModerateButton(moderate_uid, embed_moderate))
 
         elif isinstance(message.channel, disnake.DMChannel) and message.content.startswith(REACTION_SYMBOL):
             logger.info(f'{message.author} [{message.author.display_name}]: {message.content}')
