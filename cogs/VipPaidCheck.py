@@ -26,7 +26,7 @@ class VipPaidCheck(commands.Cog):
                 guild = self.bot.get_guild(GUILD_ID)
                 # Добавляем роль "VIP Guest" пользователю
                 await message.author.add_roles(disnake.utils.get(guild.roles, id=ROLE_ID_VIP))
-                await message.channel.set_permissions(message.author, send_messages=False)
+                # await message.channel.set_permissions(message.author, send_messages=False)
                 user_data[message.author.id]["coins"] -= 10
                 await save_user_data(user_data)
                 await message.author.send(

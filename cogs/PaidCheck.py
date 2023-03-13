@@ -1,23 +1,48 @@
 import disnake
 from config import CHANNEL_ID_I_PAID, REACTION_SYMBOL, CHANNEL_ID_MODERATE, ROLE_ID_Guest, \
-    ROLE_ID_MODERATE, GUILD_ID
+    ROLE_ID_MODERATE, GUILD_ID, COLOR_RED
 from disnake.ext import commands
 from func.logger import logger
 from func.database import get_user_data, get_user_data_by_static_id, save_user_data, \
     save_user_data_by_static_id
+from disnake.ui import View, button
+from bot import bot_administrators
+from func.generate_random_color import generate_random_color
 
 
-# class MyBtn(View):
-#     def __init__(self):
-#         super().__init__()
-#
-#     @button(label="btn1")
-#     async def first_btn(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-#         await interaction.response.send_message("what are u doing?")
-#
-#     @button(label="btn2")
-#     async def second_btn(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
-#         await interaction.response.send_message("what are u doing? x2")
+class ModerateButton(View):
+    def __init__(self, moderate_uid):
+        super().__init__()
+        self.moderate_uid = moderate_uid
+
+    @button(label="YES", style=disnake.ButtonStyle.success)
+    async def moderate_button_yes(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
+        if interaction.author.id not in bot_administrators:
+            await interaction.response.send_message("У Вас нет прав нажимать на эту кнопку.", ephemeral=True)
+            return
+        await interaction.response.send_message("# TODO YES ACTION", ephemeral=True)
+
+    @button(label="NO", style=disnake.ButtonStyle.danger)
+    async def moderate_button_no(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
+        if interaction.author.id not in bot_administrators:
+            await interaction.response.send_message("У Вас нет прав нажимать на эту кнопку.", ephemeral=True)
+            return
+        guild = await interaction.client.fetch_guild(GUILD_ID)
+        member = await guild.fetch_member(self.moderate_uid)
+        if member:
+            # Создаем embed сообщение
+            color = generate_random_color()
+            embed = disnake.Embed(title='', color=color)
+            embed.add_field(name='Вас Изгнали.', value="""Позвольте мне представить величественную картину, которая развернулась перед моими глазами. Пятеро громадных амбалов, как в греческой мифологии, мощными телами и устрашающими чертами лица, свирепо вытолкнули Вас из священных стен элитного отеля "The Royal Game".
+            
+            Это было зрелище, которое нельзя забыть. Мощный и дерзкий, этот акт принес вечную память о героических усилиях этих амбалов, которые настаивали на своих правах и не желали ими жертвовать. Их сила и могущество были непоколебимы, и они использовали их, чтобы защитить свой дом от нежелательных гостей.""", inline=False)
+            
+            embed.add_field(name='Вы Нарушили.', value="""Но, возможно, Вы, уважаемый собеседник, нарушили некоторые правила поведения, пренебрегли этикетом и не уважили привилегии, предоставленные Вам в этом роскошном отеле. Именно поэтому эти амбалы, будучи стражами порядка и справедливости, приняли такие жесткие меры, чтобы защитить свой дом от Вашего непочтительного поведения.
+            
+            Так что вспомните этот день, уважаемый собеседник, как день, когда Вы столкнулись с истинной мощью и силой, когда Вы поняли, что элитный отель "The Royal Game" не просто так называется "королевской игрой". И пусть это неприятное событие станет для Вас незабываемым уроком в уважении к другим и в общении с окружающими.""", inline=False)
+            await member.send(embed=embed)
+            await member.kick(reason="Kicked by CTL | FOR THE GLORY !")
+            await interaction.response.send_message("Kicked by CTL | FOR THE GLORY !", ephemeral=True)
 
 
 class PaidCheck(commands.Cog):
@@ -48,21 +73,29 @@ class PaidCheck(commands.Cog):
                 user_data = {message.author.id: {"coins": 1, "static_id": static_id, "guest": True, "moderate": False, "vip": False}}
                 await save_user_data(user_data)
 
+                # await message.channel.set_permissions(message.author, send_messages=False)
                 guild = self.bot.get_guild(GUILD_ID)
                 # Добавляем роль "Guest" пользователю
                 await message.author.add_roles(disnake.utils.get(guild.roles, id=ROLE_ID_Guest))
                 # Добавляем роль "MODERATE" пользователю
                 await message.author.add_roles(disnake.utils.get(guild.roles, id=ROLE_ID_MODERATE))
 
-                # await message.channel.set_permissions(message.author, send_messages=False)
                 await message.author.send(f"{message.author.display_name}, Вы получили свою монету и стали нашим Гостем. После проверки Вам будет доступен новый функционал!")
                 await message.author.send(f"Подробнее в <#{CHANNEL_ID_MODERATE}>")
+
+                # Создаем embed сообщение
+                color = int(COLOR_RED.format(), 16)
+                embed = disnake.Embed(title='Заплатил за 1 монету?', color=color)
+                embed.add_field(name='Кто', value=f'<@{message.author.id}>', inline=False)
+                embed.add_field(name='Статик', value=f'{user_data[message.author.id]["static_id"]}', inline=False)
+
+                moderate_channel = self.bot.get_channel(CHANNEL_ID_MODERATE)
+                moderate_uid = message.author.id
+                await moderate_channel.send(embed=embed, view=ModerateButton(moderate_uid))
 
         elif isinstance(message.channel, disnake.DMChannel) and message.content.startswith(REACTION_SYMBOL):
             logger.info(f'{message.author} [{message.author.display_name}]: {message.content}')
             await message.author.send(f"{message.author.display_name}, невозможно получить монету в личных сообщениях. Пройдите в <#{CHANNEL_ID_I_PAID}> и поставьте `+`")
-
-# TODO add moderation here
 
 
 def setup(bot: commands.Bot):
