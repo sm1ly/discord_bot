@@ -3,7 +3,6 @@
 import sqlite3
 from config import DATABASE
 from func.logger import logger
-import sys
 
 
 # Create base if not exist
@@ -70,22 +69,19 @@ async def save_user_data(user_data):
 
 # Save user data to database by static ID
 async def save_user_data_by_static_id(user_data):
-    try:
-        conn = sqlite3.connect(DATABASE)
-        c = conn.cursor()
-        for static_id, data in user_data.items():
-            coins = data["coins"]
-            uid = data["uid"]
-            guest = data.get("guest")
-            moderate = data.get("moderate")
-            vip = data.get("vip")
-            c.execute('INSERT OR REPLACE INTO user_data (uid, coins, static_id, guest, moderate, vip) VALUES (?, ?, ?, ?, ?, ?)',
-                      (uid, coins, static_id, guest, moderate, vip))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        calling_function_name = sys._getframe(1).f_code.co_name
-        logger.error(f"Error in {calling_function_name}: {str(e)}")
+    logger.info('{}'.format(user_data))
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    for static_id, data in user_data.items():
+        coins = data["coins"]
+        uid = data["uid"]
+        guest = data.get("guest")
+        moderate = data.get("moderate")
+        vip = data.get("vip")
+        c.execute('INSERT OR REPLACE INTO user_data (uid, coins, static_id, guest, moderate, vip) VALUES (?, ?, ?, ?, ?, ?)',
+                  (uid, coins, static_id, guest, moderate, vip))
+    conn.commit()
+    conn.close()
 
 
 # Save user data to database by static ID
