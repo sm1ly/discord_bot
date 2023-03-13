@@ -3,11 +3,13 @@ import disnake
 from disnake.ext import commands
 import config
 from func.logger import logger
-from database import create_tables_if_not_exist, drop_table
+from func.database import create_tables_if_not_exist, drop_table
 
 
 # Creating a commands.Bot() instance, and assigning it to "bot"
-bot = commands.Bot(intents=disnake.Intents.all(), command_prefix="/")
+command_sync_flags = commands.CommandSyncFlags.default()
+command_sync_flags.sync_commands_debug = True
+bot = commands.Bot(intents=disnake.Intents.all(), command_prefix="/", command_sync_flags=command_sync_flags)
 
 # Define the bot_administrators list
 bot_administrators = []
@@ -36,7 +38,10 @@ async def on_command_error(ctx, error):
     # логируем ошибки
     logger.error(f'Ошибка в команде {ctx.command}: {error}', exc_info=error)
 
+bot.load_extension("cogs.AddCoins")
+bot.load_extension("cogs.CheckBalance")
+bot.load_extension("cogs.CheckStaticBalance")
 bot.load_extension("cogs.PaidCheck")
 bot.load_extension("cogs.Purge")
-bot.load_extension("cogs.AddCoins")
+bot.load_extension("cogs.VipPaidCheck")
 bot.run(config.token)

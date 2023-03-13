@@ -1,7 +1,7 @@
 import disnake
 from disnake.ext import commands
 from func.logger import logger
-from main import bot_administrators
+from bot import bot_administrators
 
 
 class Purge(commands.Cog):

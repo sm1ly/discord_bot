@@ -1,8 +1,7 @@
 import disnake
 from disnake.ext import commands
 from func.logger import logger
-from main import bot_administrators
-
+from func.database import get_user_data
 
 class CheckBalance(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -11,14 +10,13 @@ class CheckBalance(commands.Cog):
 
     @commands.slash_command(name="check_balance", description="Проверить свой баланс")
     async def check_balance(self, inter: disnake.ApplicationCommandInteraction):
-        if inter.author.id not in bot_administrators:
-            await inter.response.send_message("У Вас нет прав для использования команды !purge.", ephemeral=True)
-            return
-        try:
-            await inter.channel.purge(limit=50)
-            await inter.response.send_message("Successfully deleted the last 50 messages.", ephemeral=True, delete_after=5.0)
-        except Exception as e:
-            logger.error(f"An error occurred: {e}")
+            user_data = await get_user_data(inter.author.id)
+            if not user_data:
+                await inter.response.send_message(f"{inter.author.display_name}, у Вас нет баланса, видимо Вы не оплатили ни одной монеты.", ephemeral=True)
+                return
+
+            balance = user_data["coins"]
+            await inter.response.send_message(f"{inter.author.display_name}, Ваш баланс: {balance} монет.", ephemeral=True)
 
 
 def setup(bot: commands.Bot):

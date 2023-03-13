@@ -3,7 +3,7 @@ from config import CHANNEL_ID_I_PAID, REACTION_SYMBOL, CHANNEL_ID_MODERATE, ROLE
     ROLE_ID_MODERATE, GUILD_ID
 from disnake.ext import commands
 from func.logger import logger
-from database import get_user_data, get_user_data_by_static_id, save_user_data, \
+from func.database import get_user_data, get_user_data_by_static_id, save_user_data, \
     save_user_data_by_static_id
 
 
@@ -40,6 +40,7 @@ class PaidCheck(commands.Cog):
                 # await message.channel.set_permissions(message.author, send_messages=False)
                 await message.author.send(f"{message.author.display_name}, вы уже получили свою монету!")
                 guild = self.bot.get_guild(GUILD_ID)
+                # Добавляем роль "Guest" пользователю
                 role = disnake.utils.get(guild.roles, id=ROLE_ID_Guest)
                 if role is not None:
                     await message.author.add_roles(role)

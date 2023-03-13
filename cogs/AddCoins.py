@@ -3,11 +3,10 @@ from datetime import datetime
 from disnake.ext import commands
 from func.logger import logger
 from func.generate_random_color import generate_random_color
-from main import bot_administrators
-from database import get_user_data, get_user_data_by_static_id, save_user_data, \
+from bot import bot_administrators
+from func.database import get_user_data, get_user_data_by_static_id, save_user_data, \
     save_user_data_by_static_id
 from config import CHANNEL_ID_HISTORY_ADD_COINS
-import pprint
 
 
 class AddCoins(commands.Cog):
@@ -15,7 +14,7 @@ class AddCoins(commands.Cog):
         self.bot = bot
         logger.info(f"loaded cog: {self.qualified_name}")
 
-    @commands.slash_command(name="add_coins", description="Добавляет монеты выбранному статику. Usage: /add_coins <static_id> <amount>")
+    @commands.slash_command(name="add_coins", description="Добавляет монеты выбранному статику.")
     async def add_coins(self, inter: disnake.ApplicationCommandInteraction,
                         static_id: int = commands.Param(gt=0, description='ID статика'),
                         amount: int = commands.Param(gt=0, description='Количество монет')):
@@ -23,7 +22,7 @@ class AddCoins(commands.Cog):
             await inter.response.send_message("У Вас нет прав для использования команды /add_coins.", ephemeral=True)
             return
         user_data = {static_id: await get_user_data_by_static_id(static_id)}
-        if user_data:
+        if user_data.get(static_id):
             user_data[static_id]["coins"] += amount
             await save_user_data_by_static_id(user_data)
             await inter.response.send_message(f"Успешно добавлено {amount} монет статику {static_id}!", ephemeral=True)
