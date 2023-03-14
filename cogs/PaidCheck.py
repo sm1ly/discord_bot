@@ -1,6 +1,6 @@
 import disnake
 from config import CHANNEL_ID_I_PAID, REACTION_SYMBOL, CHANNEL_ID_MODERATE, ROLE_ID_Guest, \
-    ROLE_ID_MODERATE, GUILD_ID, COLOR_success, COLOR_danger, COLOR_primary, ROLE_ID_VIP
+    ROLE_ID_MODERATE, GUILD_ID, COLOR_success, COLOR_danger, COLOR_primary, ROLE_ID_VIP, ROLE_ID_everyone
 from disnake.ext import commands
 from func.logger import logger
 from func.database import get_user_data, get_user_data_by_static_id, save_user_data, \
@@ -74,7 +74,7 @@ class PaidCheck(commands.Cog):
             # проверяем что пользователь не является работником trg
             guild = self.bot.get_guild(GUILD_ID)
             member = guild.get_member(message.author.id)
-            roles_to_check = [ROLE_ID_Guest, ROLE_ID_MODERATE, ROLE_ID_VIP]
+            roles_to_check = [ROLE_ID_Guest, ROLE_ID_MODERATE, ROLE_ID_VIP, ROLE_ID_everyone]
             for role in member.roles:
                 if role.id not in roles_to_check:
                     await message.author.send(f"{message.author.display_name}, Работник отеля не может стать Гостем!")
