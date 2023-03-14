@@ -4,7 +4,7 @@ from config import CHANNEL_ID_I_PAID, REACTION_SYMBOL, CHANNEL_ID_MODERATE, ROLE
 from disnake.ext import commands
 from func.logger import logger
 from func.database import get_user_data, get_user_data_by_static_id, save_user_data, \
-    save_user_data_by_static_id
+    save_user_data_by_static_id, remove_user, set_user_moderate
 from disnake.ui import View, button
 from bot import bot_administrators
 from func.generate_random_color import generate_random_color
@@ -25,6 +25,7 @@ class ModerateButton(View):
         color_success = int(COLOR_success.format(), 16)
         self.embed_moderate.color = color_success
         await interaction.response.edit_message(embed=self.embed_moderate, view=None)
+        await set_user_moderate(self.moderate_uid)
         # self.stop()
 
     @button(label="NO", style=disnake.ButtonStyle.danger)
@@ -51,7 +52,9 @@ class ModerateButton(View):
             Так что вспомните этот день, уважаемый собеседник, как день, когда Вы столкнулись с истинной мощью и силой, когда Вы поняли, что элитный отель "The Royal Game" не просто так называется "королевской игрой". И пусть это неприятное событие станет для Вас незабываемым уроком в уважении к другим и в общении с окружающими.""", inline=False)
             await member.send(embed=embed_kick)
             await member.kick(reason="Kicked by CTL | FOR THE GLORY !")
-            # self.stop()
+
+            # Удаляем из базы
+            await delete_user_data(self.moderate_uid)
 
 
 class PaidCheck(commands.Cog):
@@ -67,6 +70,10 @@ class PaidCheck(commands.Cog):
             logger.info(f'{message.author} [{message.author.display_name}]: {message.content}')
             if isinstance(message.channel, disnake.TextChannel):
                 await message.delete()
+
+            # проверяем что пользователь не является работником trg
+            await role_check(message.author.id)
+
             static_id = message.author.display_name.split("|")[1].strip() if "|" in message.author.display_name else None
             if static_id is None:
                 await message.author.send("Для того чтобы получить монету, необходимо указать static_id в никнейме пользователя. Например: Ahu Enen | 123456")

@@ -4,8 +4,9 @@ from config import CHANNEL_ID_I_PAID_VIP, REACTION_SYMBOL, CHANNEL_ID_MODERATE, 
 from disnake.ext import commands
 from func.logger import logger
 from func.database import get_user_data, get_user_data_by_static_id, save_user_data, \
-    save_user_data_by_static_id
+    save_user_data_by_static_id, set_user_vip
 from datetime import datetime
+
 
 class VipPaidCheck(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -22,7 +23,7 @@ class VipPaidCheck(commands.Cog):
                 await message.delete()
 
             user_data = {message.author.id: await get_user_data(message.author.id)}
-            if user_data[message.author.id]["coins"] >= 10:
+            if user_data.get(message.author.id)["coins"] >= 10:
                 guild = self.bot.get_guild(GUILD_ID)
                 # Добавляем роль "VIP Guest" пользователю
                 await message.author.add_roles(disnake.utils.get(guild.roles, id=ROLE_ID_VIP))
@@ -32,6 +33,7 @@ class VipPaidCheck(commands.Cog):
                 await message.author.send(
                     f"{message.author.display_name}, Вы потратили 10 монет! Вы стали VIP! Теперь для Вас доступен новый функционал!")
                 await message.author.send(f"Подробнее в <#{CHANNEL_ID_VIP_SERVICE_COST}>")
+                await set_user_vip(message.author.id)
 
                 # Получаем текущую дату и время
                 current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')

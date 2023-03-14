@@ -32,13 +32,8 @@ async def on_ready():
     logger.info("Bot started!")
 
 
-# обработчик ошибок
-@bot.event
-async def on_command_error(ctx, error):
-    # логируем ошибки
-    logger.error(f'Ошибка в команде {ctx.command}: {error}', exc_info=error)
-
 bot.load_extension("cogs.AddCoins")
+bot.load_extension("cogs.BotMenu")
 bot.load_extension("cogs.CheckBalance")
 bot.load_extension("cogs.CheckStaticBalance")
 bot.load_extension("cogs.PaidCheck")
