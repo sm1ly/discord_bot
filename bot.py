@@ -22,9 +22,9 @@ async def on_ready():
     # Initialize table and load user data from database
     await drop_table()
     await create_tables_if_not_exist()
-    guild = bot.get_guild(config.GUILD_ID)
     logger.info("Bot administrators:")
-    for role in guild.roles:
+    trg = bot.get_guild(config.GUILD_ID)
+    for role in trg.roles:
         if role.id == config.ROLE_ID_TheRoyalFamily or role.id == config.ROLE_ID_TheHeadInnkeeper:
             for member in role.members:
                 bot_administrators.append(member.id)
