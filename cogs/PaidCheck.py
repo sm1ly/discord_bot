@@ -25,7 +25,11 @@ class ModerateButton(View):
         color_success = int(COLOR_success.format(), 16)
         self.embed_moderate.color = color_success
         await interaction.response.edit_message(embed=self.embed_moderate, view=None)
+        guild = await interaction.client.fetch_guild(GUILD_ID)
         await set_user_moderate(self.moderate_uid)
+        member = await guild.fetch_member(self.moderate_uid)
+        moderate_role = guild.get_role(ROLE_ID_MODERATE)
+        await member.remove_roles(moderate_role, reason="Модерация пройдена")
         # self.stop()
 
     @button(label="NO", style=disnake.ButtonStyle.danger)
@@ -92,7 +96,7 @@ class PaidCheck(commands.Cog):
                 if role is not None:
                     await message.author.add_roles(role)
             else:
-                user_data = {message.author.id: {"coins": 1, "static_id": static_id, "guest": True, "moderate": False, "vip": False}}
+                user_data = {message.author.id: {"coins": 1, "static_id": static_id, "guest": True, "moderate": False, "vip": False, "vip_first": True}}
                 await save_user_data(user_data)
 
                 await message.channel.set_permissions(message.author, send_messages=False)

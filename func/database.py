@@ -28,7 +28,8 @@ async def create_tables_if_not_exist():
                  static_id INTEGER,
                  guest BOOL,
                  moderate BOOL,
-                 vip BOOL)''')
+                 vip BOOL,
+                 vip_first BOOL)''')
 
 
 # Load user data from database by UID
@@ -37,8 +38,8 @@ async def get_user_data(uid):
     if row is None:
         return False
     else:
-        uid, coins, static_id, guest, moderate, vip = row
-        return {"coins": coins, "static_id": static_id, "guest": guest, "moderate": moderate, "vip": vip}
+        uid, coins, static_id, guest, moderate, vip, vip_first = row
+        return {"coins": coins, "static_id": static_id, "guest": guest, "moderate": moderate, "vip": vip, "vip_first": vip_first}
 
 
 # Load user data from database by static_id
@@ -47,8 +48,8 @@ async def get_user_data_by_static_id(static_id):
     if row is None:
         return False
     else:
-        uid, coins, static_id, guest, moderate, vip = row
-        return {"coins": coins, "uid": uid, "guest": guest, "moderate": moderate, "vip": vip}
+        uid, coins, static_id, guest, moderate, vip, vip_first = row
+        return {"coins": coins, "uid": uid, "guest": guest, "moderate": moderate, "vip": vip, "vip_first": vip_first}
 
 
 async def get_service_data(custom_id):
@@ -69,8 +70,9 @@ async def save_user_data(user_data):
         guest = data.get("guest")
         moderate = data.get("moderate")
         vip = data.get("vip")
-        await execute('INSERT OR REPLACE INTO user_data (uid, coins, static_id, guest, moderate, vip) VALUES (?, ?, ?, ?, ?, ?)',
-                      uid, coins, static_id, guest, moderate, vip)
+        vip_first = data.get("vip_first")
+        await execute('INSERT OR REPLACE INTO user_data (uid, coins, static_id, guest, moderate, vip, vip_first) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                      uid, coins, static_id, guest, moderate, vip, vip_first)
 
 
 # Save user data to database by static ID
@@ -81,8 +83,9 @@ async def save_user_data_by_static_id(user_data):
         guest = data.get("guest")
         moderate = data.get("moderate")
         vip = data.get("vip")
-        await execute('INSERT OR REPLACE INTO user_data (uid, coins, static_id, guest, moderate, vip) VALUES (?, ?, ?, ?, ?, ?)',
-                      uid, coins, static_id, guest, moderate, vip)
+        vip_first = data.get("vip_first")
+        await execute('INSERT OR REPLACE INTO user_data (uid, coins, static_id, guest, moderate, vip, vip_first) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                      uid, coins, static_id, guest, moderate, vip, vip_first)
 
 
 # Drop table user data
@@ -112,8 +115,20 @@ async def set_user_vip(uid):
     await execute("UPDATE user_data SET vip=? WHERE uid=?", True, uid)
 
 
+# Set moderate flag to true for user with given UID
+async def set_user_vip_first(uid):
+    await execute("UPDATE user_data SET vip_first=? WHERE uid=?", False, uid)
+
+
 async def is_user_vip(uid):
     row = await fetch("SELECT vip FROM user_data WHERE uid=?", uid)
+    if row is None:
+        return False
+    return bool(row[0])
+
+
+async def is_user_vip_first(uid):
+    row = await fetch("SELECT vip_first FROM user_data WHERE uid=?", uid)
     if row is None:
         return False
     return bool(row[0])

@@ -1,6 +1,6 @@
 import disnake
 from config import CHANNEL_ID_I_PAID_VIP, REACTION_SYMBOL, CHANNEL_ID_MODERATE, ROLE_ID_VIP, GUILD_ID, \
-    CHANNEL_ID_VIP_SERVICE_COST, CHANNEL_ID_HISTORY_BECOME_VIP, COLOR_VIP
+    CHANNEL_ID_VIP_SERVICE_COST, CHANNEL_ID_HISTORY_BECOME_VIP, COLOR_VIP, COLOR_danger
 from disnake.ext import commands
 from func.logger import logger
 from func.database import get_user_data, get_user_data_by_static_id, save_user_data, \
@@ -35,10 +35,17 @@ class VipPaidCheck(commands.Cog):
                 await message.author.send(f"Подробнее в <#{CHANNEL_ID_VIP_SERVICE_COST}>")
                 await set_user_vip(message.author.id)
 
+                # Создаем embed сообщение для пользователя
+                color = int(COLOR_danger.format(), 16)
+                embed_sm = disnake.Embed(title='Вам доступна 1 беспатная услуга "Специальное мероприятие"', color=color)
+                embed_sm.add_field(name='Кто', value=f'Мы рады сообщить, что вам доступна одна бесплатная услуга - "Специальное мероприятие". '
+                                                  f'Мы уверены, что это будет замечательный опыт для вас, и надеемся, что вы оцените все преимущества, '
+                                                  f'которые мы предоставляем нашим клиентам. Для заказа используйте /menu', inline=False)
+                await message.author.send(embed=embed_sm)
+
                 # Получаем текущую дату и время
                 current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-                # Создаем embed сообщение
+                # Создаем embed сообщение для истории
                 color = int(COLOR_VIP.format(), 16)
                 embed = disnake.Embed(title='Become VIP', color=color)
                 embed.add_field(name='Кто', value=f'<@{message.author.id}>', inline=False)

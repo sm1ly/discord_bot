@@ -2,7 +2,8 @@ import disnake
 from disnake.ext import commands
 from disnake import Embed
 from func.logger import logger
-from func.database import get_user_data, is_user_moderated, is_user_vip, get_service_data
+from func.database import get_user_data, is_user_moderated, is_user_vip, get_service_data, set_user_vip_first, \
+    is_user_vip_first
 from bot import bot_administrators
 from config import CHANNEL_ID_HOW_WE_WORK, CHANNEL_ID_MODERATE, CHANNEL_ID_PAID_SERVICE, \
     ROLE_ID_VIP, GUILD_ID, COLOR_VIP
@@ -41,6 +42,20 @@ def create_button(label, emoji, custom_id, disabled=False, row=None, style=disna
     return CustomButton()
 
 
+# Создаем новый класс кнопки VipFirst
+class VipFirst(disnake.ui.Button):
+    def __init__(self):
+        super().__init__(label="Заказ бесплатного Мероприятия", custom_id="first_vip", row=4, style=disnake.ButtonStyle.red)
+
+    async def callback(self, inter: disnake.MessageInteraction):
+        await inter.response.defer()
+        # Запускаем Threader cog
+        threader_cog = self.view.bot.get_cog('Threader')
+        await threader_cog.start_thread(inter, 'pos7')
+        await set_user_vip_first(inter.author.id)
+        await inter.edit_original_message(content=f"Вы использовали Заказ бесплатного Мероприятия.", view=None)
+
+
 def create_buttons_view(buttons, bot):
     class ButtonsView(disnake.ui.View):
         def __init__(self):
@@ -68,6 +83,7 @@ class BotMenu(commands.Cog):
 
         is_vip = await is_user_vip(inter.author.id)
         is_moderated = await is_user_moderated(inter.author.id)
+        is_vip_first = await is_user_vip_first(inter.author.id)
 
         if is_vip or is_moderated:
             buttons = [
@@ -86,6 +102,10 @@ class BotMenu(commands.Cog):
                 create_button("Специальные мероприятия | 10 монет", "\U0001F3AF", "pos7",
                               disabled=not is_vip, row=3, style=disnake.ButtonStyle.danger),
             ]
+
+            # Добавляем кнопку Заказ бесплатного Специального Мероприятия только в первый раз
+            if is_vip_first and is_vip:
+                buttons.append(VipFirst())
 
             view = create_buttons_view(buttons, self.bot)
             uid = inter.user.id
