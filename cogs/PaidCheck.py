@@ -113,7 +113,6 @@ class PaidCheck(commands.Cog):
 
                 moderate_channel = self.bot.get_channel(CHANNEL_ID_MODERATE)
                 moderate_uid = message.author.id
-                # msg = await moderate_channel.send(embed=embed_moderate, view=ModerateButton(moderate_uid, msg))
                 await moderate_channel.send(embed=embed_moderate, view=ModerateButton(moderate_uid, embed_moderate))
 
         elif isinstance(message.channel, disnake.DMChannel) and message.content.startswith(REACTION_SYMBOL):

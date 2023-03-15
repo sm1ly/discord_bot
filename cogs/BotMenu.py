@@ -2,7 +2,7 @@ import disnake
 from disnake.ext import commands
 from disnake import Embed
 from func.logger import logger
-from func.database import get_user_data, is_user_moderated, is_user_vip, disable_vip
+from func.database import get_user_data, is_user_moderated, is_user_vip
 from bot import bot_administrators
 from config import CHANNEL_ID_HOW_WE_WORK, CHANNEL_ID_MODERATE, CHANNEL_ID_PAID_SERVICE, \
     ROLE_ID_VIP, GUILD_ID, COLOR_VIP
@@ -14,7 +14,8 @@ def create_button(label, emoji, custom_id, disabled=False, row=None, style=disna
             super().__init__(label=label, emoji=emoji, custom_id=custom_id, disabled=disabled, row=row, style=style)
 
         async def callback(self, inter: disnake.MessageInteraction):
-            await inter.response.send_message(f"Вы выбрали: {self.label}")
+            choice = self.label.split("|")[0].strip()
+            await inter.response.send_message(f"Вы выбрали: {choice}")
 
     return CustomButton()
 
@@ -51,7 +52,7 @@ class BotMenu(commands.Cog):
         self.bot = bot
         logger.info(f"loaded cog: {self.qualified_name}")
 
-    @commands.slash_command(name="menu", description="Вызвать меню покупок услуг.")
+    @commands.slash_command(name="menu", description="Вызов меню доступных услуг.")
     async def menu(self, inter: disnake.ApplicationCommandInteraction):
         user_data = {inter.author.id: await get_user_data(inter.author.id)}
         if not user_data.get(inter.author.id):
@@ -65,19 +66,20 @@ class BotMenu(commands.Cog):
 
         if is_vip or is_moderated:
             buttons = [
-                create_button("Организация транспортировки", "\U0001F6E1\uFE0F", "pos1", row=0,
+                create_button("Организация транспортировки | 2 монеты", "\U0001F6E1\uFE0F", "pos1", row=0,
                               style=disnake.ButtonStyle.primary),
-                create_button("Услуги консьержа 24/7", "\U0001F468\u200D\u2708\uFE0F", "pos2", row=0,
+                create_button("Услуги консьержа 24/7 | 1 монета", "\U0001F468\u200D\u2708\uFE0F", "pos2", row=0,
                               style=disnake.ButtonStyle.primary),
-                create_button("Юридическая помощь", "\U0001F31F", "pos3", row=1, style=disnake.ButtonStyle.success),
-                create_button("Услуги аренды спортивного инвентаря", "\U0001F52B", "pos4", disabled=not is_vip, row=1,
-                              style=disnake.ButtonStyle.primary),
-                create_button("Сервис удаления персональных данных", "\U0001F510", "pos5", disabled=not is_vip, row=2,
+                create_button("Юридическая помощь | 1 монета", "\U0001F31F", "pos3", row=1,
                               style=disnake.ButtonStyle.success),
-                create_button("Эксклюзивные вечеринки", "\U000026B0\uFE0F", "pos6", disabled=not is_vip, row=2,
-                              style=disnake.ButtonStyle.danger),
-                create_button("Специальные мероприятия", "\U0001F3AF", "pos7", disabled=not is_vip, row=3,
-                              style=disnake.ButtonStyle.danger),
+                create_button("Услуги аренды спортивного инвентаря | Индивидуально", "\U0001F52B", "pos4",
+                              disabled=not is_vip, row=1, style=disnake.ButtonStyle.primary),
+                create_button("Сервис удаления персональных данных | 10 монет", "\U0001F510", "pos5",
+                              disabled=not is_vip, row=2, style=disnake.ButtonStyle.success),
+                create_button("Эксклюзивные вечеринки | 10 монет", "\U000026B0\uFE0F", "pos6",
+                              disabled=not is_vip, row=2, style=disnake.ButtonStyle.danger),
+                create_button("Специальные мероприятия | 10 монет", "\U0001F3AF", "pos7",
+                              disabled=not is_vip, row=3, style=disnake.ButtonStyle.danger),
             ]
             # Добавляем кнопку Disable VIP только для VIP-гостей
             # if is_vip:
