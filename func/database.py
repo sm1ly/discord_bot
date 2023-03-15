@@ -109,6 +109,10 @@ async def is_user_vip(uid):
     return bool(row[0])
 
 
+# disable vip (# for testing purposes)
+# async def disable_vip(uid):
+#     await execute("UPDATE user_data SET vip=? WHERE uid=?", False, uid)
+
 # ------------------------------------------------------------------------------------
 #
 #   old code
