@@ -20,7 +20,7 @@ bot_administrators = []
 async def on_ready():
     logger.info(f'Logged in as {bot.user}')
     # Initialize table and load user data from database
-    await drop_table()
+    # await drop_table()
     await create_tables_if_not_exist()
     logger.info("Bot administrators:")
     trg = bot.get_guild(config.GUILD_ID)
