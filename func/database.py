@@ -3,7 +3,7 @@
 import aiosqlite
 from config import DATABASE
 from func.logger import logger
-import pprint
+#import pprint
 
 
 async def execute(query, *args):
@@ -49,6 +49,16 @@ async def get_user_data_by_static_id(static_id):
     else:
         uid, coins, static_id, guest, moderate, vip = row
         return {"coins": coins, "uid": uid, "guest": guest, "moderate": moderate, "vip": vip}
+
+
+async def get_service_data(custom_id):
+    row = await fetch(f"SELECT * FROM services WHERE custom_id = '{custom_id}'")
+    if row is None:
+        return False
+    else:
+        custom_id, local_name, roles, price = row
+        roles = roles.split(',')  # Преобразование строки ролей в список
+        return local_name, roles, price
 
 
 # Save user data to database

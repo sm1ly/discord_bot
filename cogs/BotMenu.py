@@ -2,7 +2,7 @@ import disnake
 from disnake.ext import commands
 from disnake import Embed
 from func.logger import logger
-from func.database import get_user_data, is_user_moderated, is_user_vip
+from func.database import get_user_data, is_user_moderated, is_user_vip, get_service_data
 from bot import bot_administrators
 from config import CHANNEL_ID_HOW_WE_WORK, CHANNEL_ID_MODERATE, CHANNEL_ID_PAID_SERVICE, \
     ROLE_ID_VIP, GUILD_ID, COLOR_VIP
@@ -14,33 +14,38 @@ def create_button(label, emoji, custom_id, disabled=False, row=None, style=disna
             super().__init__(label=label, emoji=emoji, custom_id=custom_id, disabled=disabled, row=row, style=style)
 
         async def callback(self, inter: disnake.MessageInteraction):
+            await inter.response.defer()
             choice = self.label.split("|")[0].strip()
-            await inter.response.send_message(f"Вы выбрали: {choice}")
+
+            # Убираем view с кнопками
+            self.view.stop()
+
+            # проверяем что у пользователя хватает монет
+            uid = inter.user.id
+            user_data = {uid: await get_user_data(uid)}
+            service_data = await get_service_data(custom_id)
+            if user_data[uid]["coins"] >= service_data[2]:
+                # Отправляем эфимерное сообщение с выбором пользователя
+                await inter.edit_original_message(content=f"Вы выбрали: {choice}", view=None)
+
+                # Запускаем Threader cog
+                threader_cog = self.view.bot.get_cog('Threader')
+                await threader_cog.start_thread(inter, custom_id)
+            else:
+                balance = user_data[uid]["coins"]
+                # Отправляем эфимерное сообщение с выбором пользователя
+                await inter.edit_original_message(
+                    content=f"Вы выбрали: {choice}. Кажется Вам не хватает на данную услугу.\n" 
+                            f"У Вас осталось {balance} монет.", view=None)
 
     return CustomButton()
 
 
-# Создаем новый класс кнопки DisableVipButton
-# class DisableVipButton(disnake.ui.Button):
-#     def __init__(self):
-#         super().__init__(label="Отключить VIP", custom_id="disable_vip", row=4, style=disnake.ButtonStyle.red)
-#
-#     async def callback(self, inter: disnake.MessageInteraction):
-#         # Удаляем роль с ID ROLE_ID_VIP
-#         guild = await inter.client.fetch_guild(GUILD_ID)
-#         role_to_remove = guild.get_role(ROLE_ID_VIP)
-#         member = await guild.fetch_member(inter.author.id)
-#         if role_to_remove in member.roles:
-#             await member.remove_roles(role_to_remove)
-#
-#         await disable_vip(inter.author.id)
-#         await inter.response.send_message("Ваш VIP статус был отключен")
-
-
-def create_buttons_view(buttons):
+def create_buttons_view(buttons, bot):
     class ButtonsView(disnake.ui.View):
         def __init__(self):
             super().__init__()
+            self.bot = bot
             for button in buttons:
                 self.add_item(button)
 
@@ -81,16 +86,17 @@ class BotMenu(commands.Cog):
                 create_button("Специальные мероприятия | 10 монет", "\U0001F3AF", "pos7",
                               disabled=not is_vip, row=3, style=disnake.ButtonStyle.danger),
             ]
-            # Добавляем кнопку Disable VIP только для VIP-гостей
-            # if is_vip:
-            #     buttons.append(DisableVipButton())
 
-            view = create_buttons_view(buttons)
-
+            view = create_buttons_view(buttons, self.bot)
+            uid = inter.user.id
+            # user_data = {uid: await get_user_data(uid)}
+            balance = user_data[uid]["coins"]
             if is_vip:
-                await inter.response.send_message(f'Вам доступны следующие услуги:', view=view, ephemeral=True)
+                await inter.response.send_message(f'У Вас {balance} монет. Вам доступны следующие услуги:',
+                                                  view=view, ephemeral=True)
             else:
-                await inter.response.send_message(f'Вам доступны следующие услуги:', view=view, ephemeral=True)
+                await inter.response.send_message(f'У Вас осталось {balance} монет. Вам доступны следующие услуги:',
+                                                  view=view, ephemeral=True)
                 # Создаем и отправляем embed-сообщение
                 color = int(COLOR_VIP.format(), 16)
                 embed = Embed(title="", description="Для получения дополнительных услуг станьте VIP.",

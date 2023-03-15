@@ -84,7 +84,7 @@ class PaidCheck(commands.Cog):
             if static_id is None:
                 await message.author.send("Для того чтобы получить монету, необходимо указать static_id в никнейме пользователя. Например: Ahu Enen | 123456")
             elif await get_user_data(message.author.id) and await get_user_data_by_static_id(static_id):
-                # await message.channel.set_permissions(message.author, send_messages=False)
+                await message.channel.set_permissions(message.author, send_messages=False)
                 await message.author.send(f"{message.author.display_name}, вы уже получили свою монету!")
                 guild = self.bot.get_guild(GUILD_ID)
                 # Добавляем роль "Guest" пользователю
@@ -95,7 +95,7 @@ class PaidCheck(commands.Cog):
                 user_data = {message.author.id: {"coins": 1, "static_id": static_id, "guest": True, "moderate": False, "vip": False}}
                 await save_user_data(user_data)
 
-                # await message.channel.set_permissions(message.author, send_messages=False)
+                await message.channel.set_permissions(message.author, send_messages=False)
                 guild = self.bot.get_guild(GUILD_ID)
                 # Добавляем роль "Guest" пользователю
                 await message.author.add_roles(disnake.utils.get(guild.roles, id=ROLE_ID_Guest))
